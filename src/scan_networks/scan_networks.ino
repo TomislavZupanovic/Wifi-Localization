@@ -56,12 +56,10 @@ void listNetworks() {
   for (int thisNet = 0; thisNet < numSsid; thisNet++) {
 
     Serial.print(WiFi.SSID(thisNet));
-
     Serial.print(",");
-
     Serial.print(WiFi.RSSI(thisNet));
     Serial.print(",");
-    Serial.print("A507");
+    Serial.print("A501");
     Serial.print("\n");
 
     
