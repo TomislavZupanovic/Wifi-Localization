@@ -59,7 +59,7 @@ void listNetworks() {
     Serial.print(",");
     Serial.print(WiFi.RSSI(thisNet));
     Serial.print(",");
-    Serial.print("A508");
+    Serial.print("A504");
     Serial.print("\n");
 
     
