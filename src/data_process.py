@@ -50,3 +50,4 @@ class Data:
         x_train, x_test, y_train, y_test = train_test_split(features, target, test_size=0.1)
         x_train, x_valid, y_train, y_valid = train_test_split(x_train, y_train, test_size=0.1)
         self.model_data = (x_train, x_valid, x_test, y_train, y_valid, y_test)
+
