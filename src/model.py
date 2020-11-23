@@ -2,8 +2,10 @@ from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.layers.experimental.preprocessing import Normalization
 import tensorflow.keras as keras
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+import seaborn as sn
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 import numpy as np
+import pandas as pd
 
 
 class Model(object):
@@ -94,3 +96,43 @@ class Model(object):
             axs[1].set_title('Accuracy plot')
             axs[1].grid()
             plt.show()
+
+    @staticmethod
+    def cm_dataframe(pred_arr, y, encoder):
+        """ Calculates Confusion Matrix and makes DataFrame for plotting it """
+        encoded_labels = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        labels = encoder.inverse_transform(encoded_labels)
+        prediction_class = np.argmax(pred_arr, axis=1)
+        cm = confusion_matrix(y, prediction_class)
+        df_cm = pd.DataFrame(cm, index=[i for i in labels],
+                             columns=[i for i in labels])
+        return df_cm
+
+    def plot_confusion_matrix(self, x_train, y_train, x_valid, y_valid, x_test, y_test, encoder):
+        """ Plots the Confusion Matrix for train-set, valid-set and test-set """
+        if self.model:
+            fig, axs = plt.subplots(nrows=1, ncols=3, squeeze=True, figsize=(10, 4))
+            for i in range(0, 3):
+                if i == 0:
+                    pred_arr = self.model.predict(x_train)
+                    df_cm = Model.cm_dataframe(pred_arr, y_train, encoder)
+                elif i == 1:
+                    pred_arr = self.model.predict(x_valid)
+                    df_cm = Model.cm_dataframe(pred_arr, y_valid, encoder)
+                else:
+                    pred_arr = self.model.predict(x_test)
+                    df_cm = Model.cm_dataframe(pred_arr, y_test, encoder)
+                sn.heatmap(df_cm, annot=True, cmap="Blues", ax=axs[i])
+                axs[i].set_xlabel('Predicted labels')
+                axs[i].set_ylabel('True labels')
+                if i == 0:
+                    axs[i].set_title('Training')
+                elif i == 1:
+                    axs[i].set_title('Validation')
+                else:
+                    axs[i].set_title('Test')
+            plt.show()
+        else:
+            raise AttributeError('First build and train model.')
+
+
