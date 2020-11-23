@@ -2,6 +2,8 @@ from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.layers.experimental.preprocessing import Normalization
 import tensorflow.keras as keras
 import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+import numpy as np
 
 
 class Model(object):
@@ -52,7 +54,25 @@ class Model(object):
         else:
             raise AttributeError('First build model then train it.')
 
+    def evaluate(self, x, y, overall=True):
+        """ Evaluates model on given X features and Y true values """
+        if self.model:
+            prediction_arr = self.model.predict(x)
+            prediction_class = np.argmax(prediction_arr, axis=1)
+            accuracy = accuracy_score(y, prediction_class)
+            precision = precision_score(y, prediction_class, average='micro')
+            recall = recall_score(y, prediction_class, average='micro')
+            if overall:
+                print('Accuracy: {:.3f}'.format(accuracy))
+                print('Precision: {:.3f}'.format(precision))
+                print('Recall: {:.3f}'.format(recall))
+            else:
+                return accuracy, precision, recall
+        else:
+            raise AttributeError('You should first train model then evaluate it.')
+
     def training_curves(self):
+        """ PLots training curves with training and validation loss and accuracy """
         if self.losses is None:
             raise AttributeError('You have not trained your model!')
         else:
