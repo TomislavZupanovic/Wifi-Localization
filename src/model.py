@@ -3,14 +3,14 @@ from tensorflow.keras.layers.experimental.preprocessing import Normalization
 import tensorflow.keras as keras
 import matplotlib.pyplot as plt
 import seaborn as sn
-from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 import numpy as np
 import pandas as pd
 
 
 class Model(object):
-    def __init__(self, input_shape):
-        self.input_shape = input_shape
+    def __init__(self):
+        self.input_shape = None
         self.model = None
         self.learning_rate = None
         self.optimizer = None
@@ -18,18 +18,19 @@ class Model(object):
         self.batch_size = None
         self.losses = None
 
-    def build(self, learning_rate, optimizer, x_train):
+    def build(self, learning_rate, optimizer, input_shape, x_train):
         """ Builds the model with Functional API and compiles optimizer and loss function """
+        self.input_shape = input_shape
         normalizer = Normalization()
         normalizer.adapt(x_train)
         # Model architecture
         inputs = keras.Input(shape=self.input_shape)
         norm_layer = normalizer(inputs)
-        layer1 = Dense(256, activation='elu', kernel_initializer='he_normal')(norm_layer)
-        layer2 = Dense(128, activation='elu', kernel_initializer='he_normal')(layer1)
-        layer3 = Dense(64, activation='elu', kernel_initializer='he_normal')(layer2)
-        dropout = Dropout(0.3)(layer3)
-        output = Dense(9, activation='softmax')(dropout)
+        layer1 = Dense(128, activation='elu', kernel_initializer='he_normal')(norm_layer)
+        layer2 = Dense(64, activation='elu', kernel_initializer='he_normal')(layer1)
+        layer3 = Dense(32, activation='elu', kernel_initializer='he_normal')(layer2)
+        dropout = Dropout(0.4)(layer3)
+        output = Dense(7, activation='softmax')(dropout)
         self.model = keras.Model(inputs=inputs, outputs=output)
 
         self.learning_rate = learning_rate
@@ -48,7 +49,7 @@ class Model(object):
 
     def train(self, x_train, y_train, x_valid, y_valid, epochs, batch_size):
         """ Trains and validates the built model """
-        if self.model:
+        if self.model is not None:
             self.epochs = epochs
             self.batch_size = batch_size
             self.losses = self.model.fit(x_train, y_train, epochs=self.epochs, batch_size=self.batch_size, verbose=1,
@@ -58,24 +59,39 @@ class Model(object):
 
     def evaluate(self, x, y, overall=True):
         """ Evaluates model on given X features and Y true values """
-        if self.model:
+        if self.losses is not None:
             prediction_arr = self.model.predict(x)
             prediction_class = np.argmax(prediction_arr, axis=1)
             accuracy = accuracy_score(y, prediction_class)
-            precision = precision_score(y, prediction_class, average='micro')
-            recall = recall_score(y, prediction_class, average='micro')
+            f1 = f1_score(y, prediction_class, average='macro')
             if overall:
                 print('Accuracy: {:.3f}'.format(accuracy))
-                print('Precision: {:.3f}'.format(precision))
-                print('Recall: {:.3f}'.format(recall))
+                print('F1 score: {:.3f}'.format(f1))
             else:
-                return accuracy, precision, recall
+                return accuracy, f1
         else:
             raise AttributeError('You should first train model then evaluate it.')
 
+    def evaluate_every_room(self, rooms, room_encoder, ap_encoder):
+        """ Evaluates model on every room separately """
+        if not self.losses:
+            raise AttributeError('You should first train model then evaluate it.')
+        index = [room.room_id[0] for room in rooms]
+        columns = ['Accuracy', 'F1 score']
+        res_df = pd.DataFrame(index=index, columns=columns)
+        for room in rooms:
+            room_name = room.room_id[0]
+            room.ap_id = ap_encoder.transform(room.ap_id)
+            room.room_id = room_encoder.transform(room.room_id)
+            x = room.iloc[:, :-1]
+            y = room.iloc[:, -1]
+            accuracy, f1 = self.evaluate(x.values, y.values, overall=False)
+            res_df.loc[room_name] = [round(accuracy, 3), round(f1, 3)]
+        print('\n==== EVALUATION FOR EVERY ROOM ===\n\n', res_df, '\n')
+
     def training_curves(self):
-        """ PLots training curves with training and validation loss and accuracy """
-        if self.losses is None:
+        """ Plots training curves with training and validation loss and accuracy """
+        if not self.losses:
             raise AttributeError('You have not trained your model!')
         else:
             fig, axs = plt.subplots(nrows=1, ncols=2, squeeze=True, figsize=(12, 5))
@@ -98,32 +114,31 @@ class Model(object):
             plt.show()
 
     @staticmethod
-    def cm_dataframe(pred_arr, y, encoder):
+    def cm_dataframe(pred_arr, y, room_encoder):
         """ Calculates Confusion Matrix and makes DataFrame for plotting it """
-        encoded_labels = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-        labels = encoder.inverse_transform(encoded_labels)
+        encoded_labels = [0, 1, 2, 3, 4, 5, 6]
+        labels = room_encoder.inverse_transform(encoded_labels)
         prediction_class = np.argmax(pred_arr, axis=1)
         cm = confusion_matrix(y, prediction_class)
         df_cm = pd.DataFrame(cm, index=[i for i in labels],
                              columns=[i for i in labels])
         return df_cm
 
-    def plot_confusion_matrix(self, x_train, y_train, x_valid, y_valid, x_test, y_test, encoder):
+    def plot_confusion_matrix(self, x_train, y_train, x_valid, y_valid, x_test, y_test, room_encoder):
         """ Plots the Confusion Matrix for train-set, valid-set and test-set """
         if self.model:
-            fig, axs = plt.subplots(nrows=1, ncols=3, squeeze=True, figsize=(10, 4))
+            fig, axs = plt.subplots(nrows=1, ncols=3, squeeze=True, figsize=(18, 5))
             for i in range(0, 3):
                 if i == 0:
                     pred_arr = self.model.predict(x_train)
-                    df_cm = Model.cm_dataframe(pred_arr, y_train, encoder)
+                    df_cm = Model.cm_dataframe(pred_arr, y_train, room_encoder)
                 elif i == 1:
                     pred_arr = self.model.predict(x_valid)
-                    df_cm = Model.cm_dataframe(pred_arr, y_valid, encoder)
+                    df_cm = Model.cm_dataframe(pred_arr, y_valid, room_encoder)
                 else:
                     pred_arr = self.model.predict(x_test)
-                    df_cm = Model.cm_dataframe(pred_arr, y_test, encoder)
-                sn.heatmap(df_cm, annot=True, cmap="Blues", ax=axs[i])
-                axs[i].set_xlabel('Predicted labels')
+                    df_cm = Model.cm_dataframe(pred_arr, y_test, room_encoder)
+                sn.heatmap(df_cm, annot=True, cmap="Blues", ax=axs[i], fmt='g')
                 axs[i].set_ylabel('True labels')
                 if i == 0:
                     axs[i].set_title('Training')
