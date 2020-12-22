@@ -6,6 +6,7 @@ import seaborn as sn
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 import numpy as np
 import pandas as pd
+import os
 
 
 class Model(object):
@@ -116,7 +117,7 @@ class Model(object):
     @staticmethod
     def cm_dataframe(pred_arr, y, room_encoder):
         """ Calculates Confusion Matrix and makes DataFrame for plotting it """
-        encoded_labels = [0, 1, 2, 3, 4, 5, 6]
+        encoded_labels = [i for i in range(len(os.listdir('data/')))]
         labels = room_encoder.inverse_transform(encoded_labels)
         prediction_class = np.argmax(pred_arr, axis=1)
         cm = confusion_matrix(y, prediction_class)
