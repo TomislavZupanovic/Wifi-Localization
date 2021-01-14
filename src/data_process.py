@@ -27,7 +27,7 @@ class Data:
             ap_list = list(csv.ap_id.unique())
             for ap in ap_list:
                 cut = csv.loc[csv.ap_id == ap]
-                cut.rssi = cut.rssi.ewm(halflife=250, min_periods=0, adjust=True).mean()
+                cut.rssi = cut.rssi.ewm(span=250, min_periods=0).mean()
                 csv.update(cut)
 
     def load_and_parse(self, list_of_files):

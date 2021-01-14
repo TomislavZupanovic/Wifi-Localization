@@ -32,7 +32,7 @@ void loop() {
 
   listNetworks();
 
-  delay(100);
+  delay(500);
 }
 
 void listNetworks() {
@@ -59,8 +59,8 @@ void listNetworks() {
     Serial.print(",");
     Serial.print(WiFi.RSSI(thisNet));
     Serial.print(",");
-    Serial.print("A506");
-    Serial.print("\n");
+    //Serial.print("A506");
+    //Serial.print("\n");
 
     
 
